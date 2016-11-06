@@ -4,9 +4,9 @@
 #include "common.h"
 #include "conv.h"
 
-static const float FLOAT_DELTA = 1e-3;
+static const float FLOAT_DELTA = 1e-3f;
 
-matrix generate_filled_matrix(int n, float value = 1.f) {
+matrix generate_filled_matrix(size_t n, float value = 1.f) {
   matrix m = allocate(n);
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {

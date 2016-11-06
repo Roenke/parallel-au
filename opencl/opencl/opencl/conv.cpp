@@ -10,7 +10,7 @@ static constexpr const char* OPENCL_PROGRAM_FILE = "conv.cl";
 
 std::pair<matrix, size_t> sequential_evaluation(matrix const& a, matrix const& b) {
   auto start = std::chrono::high_resolution_clock::now();
-  int hm = (b.size - 1) / 2;
+  int hm = (static_cast<int>(b.size) - 1) / 2;
   auto res = allocate(a.size);
   for (int i = 0; i < a.size; ++i) {
     for (int j = 0; j < a.size; ++j) {
@@ -40,6 +40,7 @@ std::pair<matrix, size_t> sequential_evaluation(matrix const& a, matrix const& b
 }
 
 std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) {
+  static auto error = std::make_pair(matrix{}, 0);
   auto start = std::chrono::high_resolution_clock::now();
 
   std::vector<cl::Platform> platforms;
