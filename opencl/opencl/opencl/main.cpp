@@ -7,7 +7,8 @@
 #include <iostream>
 #include <chrono>
 
-float FLOAT_DELTA = 1e-5f;
+static constexpr float FLOAT_DELTA = 1e-5f;
+static constexpr const char* OPENCL_PROGRAM_FILE = "conv.cl";
 
 struct matrix {
   float** elems;
@@ -17,9 +18,10 @@ struct matrix {
 matrix allocate(size_t n) {
   matrix m;
   auto matrix = new float*[n];
+  float* buf = new float[n * n];
+  std::fill_n(buf, n * n, 0);
   for (size_t i = 0; i < n; ++i) {
-    matrix[i] = new float[n];
-    std::fill_n(matrix[i], n, 0);
+    matrix[i] = buf + i * n;
   }
 
   m.size = n;
@@ -72,7 +74,7 @@ std::pair<matrix, size_t> sequential_evaluation(matrix const& a, matrix const& b
         int b_i = k + hm;
         for (int l = -hm; l <= hm; ++l) {
           int a_j = j + l;
-          
+
           if (a_j < 0 || a_j >= a.size) {
             continue;
           }
@@ -89,7 +91,51 @@ std::pair<matrix, size_t> sequential_evaluation(matrix const& a, matrix const& b
   return std::make_pair(res, elapsed.count());
 }
 
+static auto error = std::make_pair(matrix{}, 0);
+
 std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) {
+  std::vector<cl::Platform> platforms;
+  cl::Platform::get(&platforms);
+
+  std::vector<cl::Device> devices;
+  for (cl::Platform platform : platforms) {
+    std::vector<cl::Device> gpu_devices;
+    platform.getDevices(CL_DEVICE_TYPE_GPU, &gpu_devices);
+    for (cl::Device gpu : gpu_devices) {
+      devices.push_back(gpu);
+    }
+  }
+
+  if (devices.size() == 0) {
+    std::cerr << "no available devices" << std::endl;
+    return error;
+  }
+
+  cl::Device dev = devices[0];
+  std::cout << "Use device: " << dev.getInfo<CL_DEVICE_NAME>() << std::endl;
+
+  cl::Context context(devices);
+
+  cl::CommandQueue queue(context, devices.front(), CL_QUEUE_PROFILING_ENABLE);
+
+  std::ifstream cl_program(OPENCL_PROGRAM_FILE);
+
+  auto it = std::istreambuf_iterator<char>(cl_program);
+  auto end = std::istreambuf_iterator<char>();
+  std::string code(it, end);
+
+  cl::Program::Sources sourceCode(1, std::make_pair(code.c_str(), code.length() + 1));
+  cl::Program program(context, sourceCode);
+  cl_int compication_result = program.build(devices);
+
+  if (compication_result != 0) {
+    std::string name = devices[0].getInfo<CL_DEVICE_NAME>();
+    std::string buildlog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]);
+    std::cerr << "Build log for " << name << ":" << std::endl
+        << buildlog << std::endl;
+    return error;
+  }
+
   return std::make_pair(a, 1);
 }
 

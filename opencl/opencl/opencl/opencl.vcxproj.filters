@@ -30,4 +30,9 @@
       <Filter>tests</Filter>
     </Text>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="conv.cl">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>
