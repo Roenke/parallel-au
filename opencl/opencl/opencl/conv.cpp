@@ -16,16 +16,12 @@ std::pair<matrix, size_t> sequential_evaluation(matrix const& a, matrix const& b
     for (int j = 0; j < a.size; ++j) {
       for (int k = -hm; k <= hm; ++k) {
         int a_i = i + k;
-        if (a_i < 0 || a_i >= a.size) {
-          continue;
-        }
+        if (a_i < 0 || a_i >= a.size) { continue; }
         int b_i = k + hm;
         for (int l = -hm; l <= hm; ++l) {
           int a_j = j + l;
 
-          if (a_j < 0 || a_j >= a.size) {
-            continue;
-          }
+          if (a_j < 0 || a_j >= a.size) { continue; }
 
           int b_j = l + hm;
           res.elems[i][j] += a.elems[a_i][a_j] * b.elems[b_i][b_j];
@@ -50,7 +46,8 @@ std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) 
     std::vector<cl::Device> gpu_devices;
     platform.getDevices(CL_DEVICE_TYPE_GPU, &gpu_devices);
     for (cl::Device gpu : gpu_devices) {
-      devices.push_back(gpu);
+      if(gpu.getInfo<CL_DEVICE_NAME>().find_first_of("NVIDIA") != std::string::npos)
+        devices.push_back(gpu);
     }
   }
 
@@ -58,8 +55,6 @@ std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) 
     std::cerr << "no available devices" << std::endl;
     return error;
   }
-
-  cl::Device dev = devices[0];
 
   cl::Context context(devices);
 
@@ -76,10 +71,14 @@ std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) 
   cl_int compication_result = program.build(devices);
 
   if (compication_result != 0) {
-    std::string name = devices[0].getInfo<CL_DEVICE_NAME>();
-    std::string buildlog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]);
-    std::cerr << "Build log for " << name << ":" << std::endl
-      << buildlog << std::endl;
+    for (cl::Device dev : devices) {
+      std::string name = dev.getInfo<CL_DEVICE_NAME>();
+      std::string buildlog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]);
+      std::cerr << "Build log for " << name << ":" << std::endl
+          << buildlog << std::endl;
+    }
+
+    cl_program.close();
     return error;
   }
 
