@@ -1,6 +1,5 @@
-void kernel eval(global const float * a, global const float * b,
-  global float * const c, const int n, const int m)
-{
+
+void kernel eval(global const float * a, global const float * b, global float * const c, const int n, const int m) {
   int idx = get_global_id(0);
   int i = idx / n;
   int j = idx % n;
