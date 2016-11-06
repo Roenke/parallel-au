@@ -16,12 +16,16 @@ std::pair<matrix, size_t> sequential_evaluation(matrix const& a, matrix const& b
     for (int j = 0; j < a.size; ++j) {
       for (int k = -hm; k <= hm; ++k) {
         int a_i = i + k;
-        if (a_i < 0 || a_i >= a.size) { continue; }
+        if (a_i < 0 || a_i >= a.size) {
+          continue;
+        }
         int b_i = k + hm;
         for (int l = -hm; l <= hm; ++l) {
           int a_j = j + l;
 
-          if (a_j < 0 || a_j >= a.size) { continue; }
+          if (a_j < 0 || a_j >= a.size) {
+            continue;
+          }
 
           int b_j = l + hm;
           res.elems[i][j] += a.elems[a_i][a_j] * b.elems[b_i][b_j];
@@ -46,8 +50,7 @@ std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) 
     std::vector<cl::Device> gpu_devices;
     platform.getDevices(CL_DEVICE_TYPE_GPU, &gpu_devices);
     for (cl::Device gpu : gpu_devices) {
-      if(gpu.getInfo<CL_DEVICE_NAME>().find_first_of("NVIDIA") != std::string::npos)
-        devices.push_back(gpu);
+      if (gpu.getInfo<CL_DEVICE_NAME>().find_first_of("NVIDIA") != std::string::npos) devices.push_back(gpu);
     }
   }
 
