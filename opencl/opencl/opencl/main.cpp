@@ -7,7 +7,7 @@
 #include <iostream>
 #include <chrono>
 
-static constexpr float FLOAT_DELTA = 1e-5f;
+static constexpr float FLOAT_DELTA = 1e-3f;
 static constexpr const char* OPENCL_PROGRAM_FILE = "conv.cl";
 
 struct matrix {
@@ -136,7 +136,39 @@ std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) 
     return error;
   }
 
-  return std::make_pair(a, 1);
+  matrix c = allocate(a.size);
+
+  size_t a_buf_size = sizeof(float) * a.size * a.size;
+  size_t b_buf_size = sizeof(float) * b.size * b.size;
+  size_t c_buf_size = sizeof(float) * c.size * c.size;
+
+  cl::Buffer dev_in_a(context, CL_MEM_READ_ONLY, a_buf_size);
+  cl::Buffer dev_in_b(context, CL_MEM_READ_ONLY, b_buf_size);
+  cl::Buffer dev_output(context, CL_MEM_WRITE_ONLY, c_buf_size);
+
+  queue.enqueueWriteBuffer(dev_in_a, CL_TRUE, 0, a_buf_size, &a.elems[0][0]);
+  queue.enqueueWriteBuffer(dev_in_b, CL_TRUE, 0, b_buf_size, &b.elems[0][0]);
+  queue.enqueueWriteBuffer(dev_output, CL_TRUE, 0, a_buf_size, &c.elems[0][0]);
+
+  queue.finish();
+
+  cl::Kernel kernel(program, "eval");
+  kernel.setArg(0, dev_in_a);
+  kernel.setArg(1, dev_in_b);
+  kernel.setArg(2, dev_output);
+  kernel.setArg(3, static_cast<int>(a.size));
+  kernel.setArg(4, static_cast<int>(b.size));
+
+  auto start = std::chrono::high_resolution_clock::now();
+  queue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(a_buf_size));
+  auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - start);
+
+  cl_int evaluation_result = queue.enqueueReadBuffer(dev_output, CL_TRUE, 0, c_buf_size, &c.elems[0][0]);
+  if (evaluation_result != CL_SUCCESS) {
+    std::cerr << "Something went wrong. Code = " << evaluation_result << std::endl;
+  }
+    
+  return std::make_pair(c, elapsed.count());
 }
 
 void print_matrix(matrix const& m, std::ostream& os) {
@@ -161,6 +193,8 @@ int main(void) {
   std::cout << "acceleration = " << static_cast<double>(seq_res.second) / par_res.second << std::endl;
 
   print_matrix(seq_res.first, std::cout);
+  std::cout << std::endl;
+  print_matrix(par_res.first, std::cout);
   assert_equals(seq_res.first, par_res.first);
   std::cout << "parallel and sequential algorithms produce same matrices" << std::endl;
 }
