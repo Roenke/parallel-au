@@ -1,8 +1,12 @@
 
 void kernel eval(global const float * a, global const float * b, global float * const c, const int n, const int m) {
-  int idx = get_global_id(0);
-  int i = idx / n;
-  int j = idx % n;
+  int i = get_global_id(0);
+  int j = get_global_id(1);
+  
+  if (i >= n || j >= n) {
+    return;
+  }
+
   int hm = (m - 1) / 2;
   float res = 0.f;
 
@@ -14,5 +18,5 @@ void kernel eval(global const float * a, global const float * b, global float * 
     }
   }
 
-  c[idx] = res;
+  c[i * n + j] = res;
 }

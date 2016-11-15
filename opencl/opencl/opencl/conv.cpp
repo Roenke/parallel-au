@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 
+static constexpr size_t WORK_GROUP_DIM_SIZE = 16;
 static constexpr const char* OPENCL_PROGRAM_FILE = "conv.cl";
 
 std::pair<matrix, size_t> sequential_evaluation(matrix const& a, matrix const& b) {
@@ -51,7 +52,8 @@ std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) 
     std::vector<cl::Device> gpu_devices;
     platform.getDevices(CL_DEVICE_TYPE_GPU, &gpu_devices);
     for (cl::Device gpu : gpu_devices) {
-      if (gpu.getInfo<CL_DEVICE_NAME>().find_first_of("NVIDIA") != std::string::npos) devices.push_back(gpu);
+      //if (gpu.getInfo<CL_DEVICE_NAME>().find_first_of("NVIDIA") != std::string::npos) 
+        devices.push_back(gpu);
     }
   }
 
@@ -109,7 +111,8 @@ std::pair<matrix, size_t> parallel_evaluation(matrix const& a, matrix const& b) 
   kernel.setArg(3, static_cast<int>(a.size));
   kernel.setArg(4, static_cast<int>(b.size));
 
-  queue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(a.size * a.size));
+  size_t size = a.size % WORK_GROUP_DIM_SIZE == 0 ? a.size : a.size + (WORK_GROUP_DIM_SIZE - a.size % WORK_GROUP_DIM_SIZE);
+  queue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(size, size), cl::NDRange(WORK_GROUP_DIM_SIZE, WORK_GROUP_DIM_SIZE));
 
   cl_int evaluation_result = queue.enqueueReadBuffer(dev_output, CL_TRUE, 0, c_buf_size, &c.elems[0][0]);
   auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - start);
