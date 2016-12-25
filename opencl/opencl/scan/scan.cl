@@ -1,15 +1,19 @@
 #define SWAP(a,b) {__local float* tmp=a; a=b; b=tmp;}
 
-__kernel void local_scan(__global float * input, __global float * output, __global float * bound_values,
-  __local float * a, __local float * b)
+__kernel void scan(__global float* input, 
+                   __global float* output, 
+                   __global float* bound_values, 
+                   __local float* a, 
+                   __local float* b)
 {
   uint gid = get_group_id(0);
   uint lid = get_local_id(0);
   uint block_size = get_local_size(0);
 
-  uint real_index = lid + gid * block_size;
+  uint ix = lid + gid * block_size;
 
-  a[lid] = b[lid] = input[real_index];
+  a[lid] = b[lid] = input[ix];
+
   barrier(CLK_LOCAL_MEM_FENCE);
 
   for (uint s = 1; s < block_size; s *= 2) {
@@ -24,21 +28,21 @@ __kernel void local_scan(__global float * input, __global float * output, __glob
     SWAP(a, b);
   }
 
-  output[real_index] = a[lid];
+  output[ix] = a[lid];
   if (lid == block_size - 1) {
     bound_values[gid] = a[lid];
   }
 }
 
 __kernel 
-void add_lefter_bounds(__global float* output, __global float* bound_values)
+void add_bounds(__global float* output, __global float* bound_values)
 {
   uint lid = get_local_id(0);
   uint gid = get_group_id(0);
   uint block_size = get_local_size(0);
   
-  uint ix = lid + gid * block_size;
-  for (uint i = 0; i < gid; ++i) {
-    output[ix] += bound_values[i];
+  if (gid > 0) {
+    uint ix = lid + gid * block_size;
+    output[ix] += bound_values[gid - 1];
   }
 }
