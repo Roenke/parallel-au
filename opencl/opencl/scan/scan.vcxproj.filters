@@ -24,4 +24,9 @@
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="scan.cl">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>
